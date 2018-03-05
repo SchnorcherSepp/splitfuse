@@ -9,10 +9,10 @@ if [ "$(whoami)" != "root" ]; then
    exit 1
 fi
 
-# install git
-echo "install git and fuse ..."
+# install git, unzip and fuse
+echo "install git, unzip and fuse ..."
 apt -qq update
-apt install -qq git fuse -y
+apt install -qq git unzip fuse -y
 
 # create workdir
 WORKDIR=/tmp/splitfusetmp
@@ -35,3 +35,22 @@ GOPATH=$WORKDIR/gohome $WORKDIR/go/bin/go get github.com/SchnorcherSepp/splitfus
 echo "build and install splitfuse ..."
 cd $WORKDIR/gohome/src/github.com/SchnorcherSepp/splitfuse/
 GOPATH=$WORKDIR/gohome $WORKDIR/go/bin/go build -o /usr/bin/splitfuse
+
+# install rclone
+echo "install rclone ..."
+cd $WORKDIR
+DLRCLONE="https://downloads.rclone.org/rclone-current-linux-amd64.zip"
+DLFILE="rclone.zip"
+wget -q -O $DLFILE $DLRCLONE
+unzip -qq -a rclone.zip -d rclone
+rm $DLFILE
+cd rclone/*
+#binary
+cp rclone /usr/bin/rclone.new
+chmod 755 /usr/bin/rclone.new
+chown root:root /usr/bin/rclone.new
+mv /usr/bin/rclone.new /usr/bin/rclone
+#manuals
+mkdir -p /usr/local/share/man/man1
+cp rclone.1 /usr/local/share/man/man1/
+mandb -q
