@@ -1,0 +1,162 @@
+package core
+
+import (
+	"testing"
+	"bytes"
+	"crypto/sha256"
+	"reflect"
+	"crypto/sha512"
+	"encoding/hex"
+	"path/filepath"
+	"os"
+)
+
+var (
+	key           []byte
+	db            SfDb
+	writeTestFile string
+)
+
+func init() {
+	// create writeTestFile
+	writeTestFile = filepath.Join(os.TempDir(), "database.test")
+
+	// generate test key with sha256 and a string
+	h := sha256.New()
+	h.Write([]byte("was geht up key"))
+	key = h.Sum(nil)
+
+	// generate a test DB with some samples
+	db = SfDb{
+		"hallo": SfFile{
+			Size:          444,
+			Mtime:         34,
+			IsFile:        true,
+			FileChunks:    []ChunkHash{[64]byte{}},
+			FolderContent: nil,
+		},
+		"du": SfFile{
+			Size:          444,
+			Mtime:         36,
+			IsFile:        true,
+			FileChunks:    []ChunkHash{[64]byte{}},
+			FolderContent: nil,
+		},
+		"da": SfFile{
+			Size:          444,
+			Mtime:         44,
+			IsFile:        true,
+			FileChunks:    []ChunkHash{[64]byte{}},
+			FolderContent: nil,
+		},
+		"drüben": SfFile{
+			Size:          0,
+			Mtime:         34,
+			IsFile:        false,
+			FileChunks:    nil,
+			FolderContent: []FolderContent{{"file", true}, {"folder", false}},
+		},
+		"großes haus": SfFile{
+			Size:          9,
+			Mtime:         34,
+			IsFile:        true,
+			FolderContent: []FolderContent{{"file", true}, {"folder", false}},
+		},
+		"jejejeje": SfFile{
+			Size:   923923,
+			Mtime:  34,
+			IsFile: true,
+		},
+		"dingdOng": SfFile{
+			Size:       1234567,
+			Mtime:      34,
+			IsFile:     true,
+			FileChunks: []ChunkHash{[64]byte{}},
+		},
+		"leer": SfFile{},
+	}
+}
+
+// ================================================================================================================== //
+
+func TestSha512ToChunkHash(t *testing.T) {
+	// generate some test bytes with sha512
+	hf := sha512.New()
+	hf.Write([]byte("test"))
+	h := hf.Sum(nil)
+
+	// use Sha512ToChunkHash
+	ch, err := Sha512ToChunkHash(h)
+	if err != nil {
+		t.Error(err)
+	}
+
+	// check result
+	hs, _ := hex.DecodeString("EE26B0DD4AF7E749AA1A8EE3C10AE9923F618980772E473F8819A5D4940E0DB27AC185F8A0E1D5F84F88BC887FD67B143732C304CC5FA9AD8E6F57F50028A8FF")
+	if !bytes.Equal(ch[:], hs) {
+		t.Errorf("sha512 hash wrong %x is not %x", ch, hs)
+	}
+}
+
+func TestDbToFileAndDbFromFile(t *testing.T) {
+
+	// schreiben
+	err := DbToFile(writeTestFile, key, db)
+	if err != nil {
+		t.Error(err)
+	}
+	// lesen
+	readdb, err := DbFromFile(writeTestFile, key)
+	if err != nil {
+		t.Error(err)
+	}
+	// vergleichen
+	if !reflect.DeepEqual(readdb, db) {
+		t.Error("DB not equal")
+	}
+
+}
+
+func TestDbToEncGOBAndDbFromEncGOB(t *testing.T) {
+	// db verschlüsseln
+	nonce1, ciphertext1, err := DbToEncGOB(key, db)
+	if err != nil {
+		t.Errorf("db.toEncGOB error 1: %v", err)
+	}
+
+	nonce2, ciphertext2, err := DbToEncGOB(key, db)
+	if err != nil {
+		t.Errorf("db.toEncGOB error 2: %v", err)
+	}
+
+	if bytes.Equal(nonce1, nonce2) {
+		t.Errorf("two nonce are equal: %v, %v", nonce1, nonce2)
+	}
+
+	if len(nonce1) != 12 {
+		t.Errorf("the nonce (1) for GCM should be 12 bytes long: %d: %v", len(nonce1), nonce1)
+	}
+
+	if len(nonce2) != 12 {
+		t.Errorf("the nonce (2) for GCM should be 12 bytes long: %d: %v", len(nonce2), nonce2)
+	}
+
+	if bytes.Equal(ciphertext1, ciphertext2) {
+		t.Errorf("ciphertext equal: %v, %v", ciphertext1, ciphertext2)
+	}
+
+	// db entschlüsseln
+	newdb1, err := DbFromEncGOB(key, nonce1, ciphertext1)
+	if err != nil {
+		t.Errorf("DbFromEncGOB error 1: %v", err)
+	}
+	newdb2, err := DbFromEncGOB(key, nonce2, ciphertext2)
+	if err != nil {
+		t.Errorf("DbFromEncGOB error 2: %v", err)
+	}
+
+	if !reflect.DeepEqual(newdb1, newdb2) || !reflect.DeepEqual(newdb1, db) {
+		t.Errorf("struct not equal\n%v\n%v\n%v", newdb1, newdb2, db)
+	}
+
+}
