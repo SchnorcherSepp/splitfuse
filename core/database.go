@@ -175,7 +175,7 @@ func DbFromFile(path string, key []byte) (db SfDb, err error) {
 
 	// Datei muss groß genug sein
 	if len(filebytes) < gcmStandardNonceSize+1 {
-		err = errors.New("file is too short")
+		err = errors.New("db file is too short")
 		return
 	}
 
