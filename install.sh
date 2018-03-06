@@ -1,56 +1,63 @@
 #!/bin/bash
 
-GOVERSION="https://dl.google.com/go/go1.10.linux-amd64.tar.gz"
-
-
-# Check user
+##################################################
+#  check user                                    #
+##################################################
 if [ "$(whoami)" != "root" ]; then
    echo "This script must be run as root" 1>&2
    exit 1
 fi
 
-# install git, unzip and fuse
-echo "install git, unzip and fuse ..."
-apt -qq update
-apt install -qq git unzip fuse -y
+##################################################
+#  dependencies                                  #
+##################################################
+echo "install dependencies (git and fuse)"
+apt update          &> /dev/null  # update
+apt install git -y  &> /dev/null  # install git for go get command
+apt install fuse -y &> /dev/null  # install fuse for FUSE support
 
-# create workdir
-WORKDIR=/tmp/splitfusetmp
-rm -R $WORKDIR &> /dev/null
-mkdir -p $WORKDIR
+##################################################
+#  rm and make tempdir                           #
+##################################################
+TEMPDIR=/tmp/splitfusetmp
+rm -R $TEMPDIR &> /dev/null
+mkdir -p $TEMPDIR
+cd $TEMPDIR
 
-# download and unzip GO
-echo "download go ..."
-DLFILE="go.tar.gz"
-cd $WORKDIR
-wget -q -O $DLFILE $GOVERSION
-tar -xzf $DLFILE
-rm $DLFILE
+##################################################
+#  download go (without installation)            #
+##################################################
+echo "download go (without installation)"
+GOVERSION="https://dl.google.com/go/go1.10.linux-amd64.tar.gz"
+GOFILE="go.tar.gz"
+wget -q -O $GOFILE $GOVERSION
+tar -xzf $GOFILE
+rm $GOFILE
+GOCMD=$TEMPDIR/go/bin/go
+GOHOME=$WORKDIR/gohome
 
-# clone project splitfuse
-echo "clone splitfuse ..."
-GOPATH=$WORKDIR/gohome $WORKDIR/go/bin/go get github.com/SchnorcherSepp/splitfuse
+##################################################
+#  install splitfuse                             #
+##################################################
+echo "install splitfuse"
+PROJECT="github.com/SchnorcherSepp/splitfuse"
+INSTALLPATH="/usr/bin/splitfuse"
+GOPATH=$GOHOME $GOCMD get $PROJECT
+cd $GOHOME/src/$PROJECT
+GOPATH=$GOHOME $GOCMD build -o $INSTALLPATH
 
-# build and install splitfuse
-echo "build and install splitfuse ..."
-cd $WORKDIR/gohome/src/github.com/SchnorcherSepp/splitfuse/
-GOPATH=$WORKDIR/gohome $WORKDIR/go/bin/go build -o /usr/bin/splitfuse
+##################################################
+#  install rclone                                #
+##################################################
+echo "install rclone"
+PROJECT="github.com/ncw/rclone"
+INSTALLPATH="/usr/bin/rclone"
+GOPATH=$GOHOME $GOCMD get $PROJECT
+cd $GOHOME/src/$PROJECT
+GOPATH=$GOHOME $GOCMD build -o $INSTALLPATH
 
-# install rclone
-echo "install rclone ..."
-cd $WORKDIR
-DLRCLONE="https://downloads.rclone.org/rclone-current-linux-amd64.zip"
-DLFILE="rclone.zip"
-wget -q -O $DLFILE $DLRCLONE
-unzip -qq -a rclone.zip -d rclone
-rm $DLFILE
-cd rclone/*
-#binary
-cp rclone /usr/bin/rclone.new
-chmod 755 /usr/bin/rclone.new
-chown root:root /usr/bin/rclone.new
-mv /usr/bin/rclone.new /usr/bin/rclone
-#manuals
-mkdir -p /usr/local/share/man/man1
-cp rclone.1 /usr/local/share/man/man1/
-mandb -q
+##################################################
+#  FIN (rm tempdir)                              #
+##################################################
+echo "clean up"
+rm -R $TEMPDIR &> /dev/null
