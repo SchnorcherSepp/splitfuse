@@ -34,12 +34,12 @@ wget -q -O $GOFILE $GOVERSION
 tar -xzf $GOFILE
 rm $GOFILE
 GOCMD=$TEMPDIR/go/bin/go
-GOHOME=$WORKDIR/gohome
+GOHOME=$TEMPDIR/gohome
 
 ##################################################
 #  install splitfuse                             #
 ##################################################
-echo "install splitfuse"
+echo "build & install splitfuse"
 PROJECT="github.com/SchnorcherSepp/splitfuse"
 INSTALLPATH="/usr/bin/splitfuse"
 GOPATH=$GOHOME $GOCMD get $PROJECT
@@ -49,7 +49,7 @@ GOPATH=$GOHOME $GOCMD build -o $INSTALLPATH
 ##################################################
 #  install rclone                                #
 ##################################################
-echo "install rclone"
+echo "build & install rclone"
 PROJECT="github.com/ncw/rclone"
 INSTALLPATH="/usr/bin/rclone"
 GOPATH=$GOHOME $GOCMD get $PROJECT
