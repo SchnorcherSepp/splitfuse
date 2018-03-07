@@ -13,7 +13,7 @@ import (
 	"github.com/hanwen/go-fuse/fuse/pathfs"
 )
 
-const maxLastFhCache = 11
+const maxLastFhCache = 4
 
 // SplitFile wird von der Open() Funktion zurück gegeben
 // und stellt die Read() Funktion zur verfügung..
@@ -39,8 +39,9 @@ func (f *SplitFile) Release() {
 	f.lastFhMux.Lock() // THREAD SAFE: start
 	for i := 0; i < maxLastFhCache; i++ {
 		if f.lastFh[i].fh != nil {
-			debug(f.debug, "Release: close fh["+fmt.Sprintf("%d", i)+"] for "+f.lastFh[i].fh.Name())
+			debug(f.debug, fmt.Sprintf("Release: close fh[%d] for %s", i, f.lastFh[i].fh.Name()))
 			f.lastFh[i].fh.Close()
+			f.lastFh[i].fh = nil
 		}
 	}
 	f.lastFhMux.Unlock() // THREAD SAFE: end
@@ -88,6 +89,8 @@ func (f *SplitFile) Read(buf []byte, offset int64) (fuse.ReadResult, fuse.Status
 		}
 	}
 
+	debug(f.debug, fmt.Sprintf("use fh[%d] for position %d and len %d", foundPerfectFh, offset, len(buf)))  // TODO: muss das noch da sein?
+
 	var openErr error
 	if foundPerfectFh > -1 {
 		// der gespeicherte file handler ist geeignet
@@ -109,9 +112,10 @@ func (f *SplitFile) Read(buf []byte, offset int64) (fuse.ReadResult, fuse.Status
 		if f.lastFh[maxLastFhCache-1].fh != nil {
 			if f.debug {
 				currentPosition, _ := f.lastFh[maxLastFhCache-1].fh.Seek(0, 1) // 0 offset to current position = current position
-				debug(f.debug, "close fh["+fmt.Sprintf("%d", maxLastFhCache-1)+"] for "+f.lastFh[maxLastFhCache-1].fh.Name()+" at position "+fmt.Sprintf("%d", currentPosition))
+				debug(f.debug, fmt.Sprintf("close fh[%d] for %s at position %d", maxLastFhCache-1, f.lastFh[maxLastFhCache-1].fh.Name(), currentPosition))
 			}
 			f.lastFh[maxLastFhCache-1].fh.Close()
+			f.lastFh[maxLastFhCache-1].fh = nil
 		}
 		// alle fh wandern einen postion nach unten, damit position 0 frei wird
 		for i := maxLastFhCache - 1; i < 1; i-- {
@@ -138,7 +142,7 @@ func (f *SplitFile) Read(buf []byte, offset int64) (fuse.ReadResult, fuse.Status
 
 			} else {
 				// phu, seek ist ok gegangen
-				debug(f.debug, "set fh[0] offset to "+fmt.Sprintf("%d", chunkOffset)+" for "+fh.Name())
+				debug(f.debug, fmt.Sprintf("set fh[0] offset to %d for %s", chunkOffset, fh.Name()))
 				// Daten lesen
 				n, err := fh.Read(buf)
 				if err != nil && n > 0 {
