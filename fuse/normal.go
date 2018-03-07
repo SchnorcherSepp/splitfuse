@@ -13,7 +13,7 @@ import (
 	"github.com/hanwen/go-fuse/fuse/pathfs"
 )
 
-const maxLastFhCache = 12
+const maxLastFhCache = 11
 
 // SplitFile wird von der Open() Funktion zurück gegeben
 // und stellt die Read() Funktion zur verfügung..
@@ -28,7 +28,7 @@ type SplitFile struct {
 		chunkNr   int
 		nextChOff int64
 	}
-	lastFhMux       sync.Mutex
+	lastFhMux sync.Mutex
 	nodefs.File
 }
 
@@ -37,7 +37,7 @@ type SplitFile struct {
 // ACHTUNG: Muss syncronisiert werden!
 func (f *SplitFile) Release() {
 	f.lastFhMux.Lock() // THREAD SAFE: start
-	for i:=0; i<maxLastFhCache; i++ {
+	for i := 0; i < maxLastFhCache; i++ {
 		if f.lastFh[i].fh != nil {
 			debug(f.debug, "Release: close fh["+fmt.Sprintf("%d", i)+"] for "+f.lastFh[i].fh.Name())
 			f.lastFh[i].fh.Close()
@@ -81,12 +81,13 @@ func (f *SplitFile) Read(buf []byte, offset int64) (fuse.ReadResult, fuse.Status
 	f.lastFhMux.Lock() // THREAD SAFE: start
 
 	foundPerfectFh := -1
-	for i:=0; i<maxLastFhCache; i++ {
+	for i := 0; i < maxLastFhCache; i++ {
 		if f.lastFh[i].fh != nil && f.lastFh[i].nextChOff == chunkOffset && f.lastFh[i].chunkNr == chunkNr {
 			foundPerfectFh = i
 			break
 		}
 	}
+	debug(f.debug, fmt.Sprintf("USE FH INDEX: %d", foundPerfectFh))  //TODO: löschen
 
 	var openErr error
 	if foundPerfectFh > -1 {
@@ -114,10 +115,9 @@ func (f *SplitFile) Read(buf []byte, offset int64) (fuse.ReadResult, fuse.Status
 			f.lastFh[maxLastFhCache-1].fh.Close()
 		}
 		// alle fh wandern einen postion nach unten, damit position 0 frei wird
-		for i:=0; i<maxLastFhCache-1; i++ {
+		for i := 0; i < maxLastFhCache-1; i++ {
 			f.lastFh[i+1] = f.lastFh[i]
 		}
-
 
 		// neuen fh öffnen, der auf Pos 0 kommt
 		fh, err := os.Open(chunPath)
