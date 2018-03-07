@@ -87,7 +87,6 @@ func (f *SplitFile) Read(buf []byte, offset int64) (fuse.ReadResult, fuse.Status
 			break
 		}
 	}
-	debug(f.debug, fmt.Sprintf("USE FH INDEX: %d", foundPerfectFh))  //TODO: löschen
 
 	var openErr error
 	if foundPerfectFh > -1 {
@@ -115,8 +114,8 @@ func (f *SplitFile) Read(buf []byte, offset int64) (fuse.ReadResult, fuse.Status
 			f.lastFh[maxLastFhCache-1].fh.Close()
 		}
 		// alle fh wandern einen postion nach unten, damit position 0 frei wird
-		for i := 0; i < maxLastFhCache-1; i++ {
-			f.lastFh[i+1] = f.lastFh[i]
+		for i := maxLastFhCache - 1; i < 1; i-- {
+			f.lastFh[i] = f.lastFh[i-1]
 		}
 
 		// neuen fh öffnen, der auf Pos 0 kommt
