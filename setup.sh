@@ -66,6 +66,8 @@ chmod +x $MOUNTSCRIPT
 ##################################################
 UPLOADSCRIPT=/usr/bin/sfupload
 REVERSEMOUNT=/tmp/sf-mount
+TMPDBFOLDER=/tmp/sf-index
+TMPDB=$TMPDBFOLDER/index.db
 cat > $UPLOADSCRIPT << EOL
 #!/bin/bash
 if [ "\$(/usr/bin/whoami)" != "$USER" ]; then
@@ -79,29 +81,28 @@ if [ -z "\$ROOTDIR" ]; then
     exit 1
 fi
 # download index
-/bin/echo "download db ..."
-/bin/rm /tmp/index.db &> /dev/null
-HOME=$CONFFOLDER /usr/bin/rclone --config $RCLONECONFFILE copy upload:index.db /tmp
-OLDSTATUS="\$(/bin/ls -l /tmp/index.db)"
+/bin/mkdir -p $TMPDBFOLDER
+/bin/rm $DB &> /dev/null
+HOME=$CONFFOLDER /usr/bin/rclone --config $RCLONECONFFILE copy upload:index.db $TMPDBFOLDER/
+OLDSTATUS="\$(/bin/ls -l $TMPDB)"
 # update DB
-/bin/echo "scan rootdir for new files ..."
-/usr/bin/splitfuse scan --dbfile /tmp/index.db --keyfile $SPLITKEYFILE --rootdir \$ROOTDIR
-NEWSTATUS="\$(/bin/ls -l /tmp/index.db)"
+/usr/bin/splitfuse scan --dbfile $TMPDB --keyfile $SPLITKEYFILE --rootdir \$ROOTDIR
+NEWSTATUS="\$(/bin/ls -l $TMPDB)"
 # are there new files?
 if [ "\$OLDSTATUS" == "\$NEWSTATUS" ]; then
-   /bin/echo "nothing new" 1>&2
-   exit 1
+   # nothing new
+   exit 0
 fi
 # reverse mount
 /bin/echo "reverse mount ..."
 /bin/mkdir -p $REVERSEMOUNT
-/usr/bin/splitfuse reverse --dbfile /tmp/index.db --keyfile $SPLITKEYFILE --rootdir \$ROOTDIR --mountdir $REVERSEMOUNT &
+/usr/bin/splitfuse reverse --dbfile $TMPDB --keyfile $SPLITKEYFILE --rootdir \$ROOTDIR --mountdir $REVERSEMOUNT &
 # best race condition fix ever !!
 /bin/sleep 5
 # upload with rclone
 /bin/echo "start rclone sync ..."
 HOME=$CONFFOLDER /usr/bin/rclone --config $RCLONECONFFILE copy --transfers 1 --size-only -v $REVERSEMOUNT upload:partstorage
-HOME=$CONFFOLDER /usr/bin/rclone --config $RCLONECONFFILE copy /tmp/index.db upload:/
+HOME=$CONFFOLDER /usr/bin/rclone --config $RCLONECONFFILE copy $TMPDB upload:/
 # unmount
 /bin/echo "unmount ..."
 /bin/fusermount -u $REVERSEMOUNT
