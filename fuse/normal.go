@@ -95,7 +95,10 @@ func (f *SplitFile) Read(buf []byte, offset int64) (fuse.ReadResult, fuse.Status
 
 		// alten fh schließen (wenn vorhanden)
 		if f.lastFh.fh != nil {
-			debug(f.debug, "close fh for "+f.lastFh.fh.Name())
+			if f.debug {
+				currentPosition, _ := f.lastFh.fh.Seek(0, 1) // 0 offset to current position = current position
+				debug(f.debug, "close fh for "+f.lastFh.fh.Name()+" at position "+fmt.Sprintf("%d", currentPosition))
+			}
 			f.lastFh.fh.Close()
 		}
 
