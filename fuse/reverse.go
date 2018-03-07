@@ -180,7 +180,7 @@ func (fs *ReverseFs) StatFs(name string) *fuse.StatfsOut {
 }
 
 // MountReverse mountet die Chunks um sie in die CLoud zu syncronisieren
-func MountReverse(dbpath string, keyfile string, rootdir string, mountdir string, debug bool, test bool) *fuse.Server {
+func MountReverse(dbpath string, keyfile string, rootdir string, mountdir string, debugFlag bool, test bool) *fuse.Server {
 
 	// Keyfile laden
 	k := core.LoadKeyfile(keyfile)
@@ -208,6 +208,7 @@ func MountReverse(dbpath string, keyfile string, rootdir string, mountdir string
 
 	// crypHashIndex: Ich brauche eine Tabelle, in der ich den Chung Name (das ist der verschlüsselte Chunk Hash)
 	// gesucht werden kann. Die DB kann das nicht leisten, also bauen wir uns eine neue Map.
+	debug(debugFlag, "Optimize db for reverse mode. That can take a few minutes.")
 	crypHashIndex := make(map[core.ChunkHash]pai)
 	// gehe alle klartext Dateien aus der DB durch
 	for p, f := range db {
@@ -231,12 +232,13 @@ func MountReverse(dbpath string, keyfile string, rootdir string, mountdir string
 			crypHashIndex[ch] = pai{path: p, index: i, chunkKey: k.CalcChunkKey(h[:]), chunkSize: chunkSize}
 		}
 	}
+	debug(debugFlag, "start mounting")
 
 	// OPTIONEN
 	opts := &fuse.MountOptions{
 		FsName:     "ReverseFuse", // erste Spalte bei 'df -hT'
 		Name:       "splitfsv2",   // zweite Spalte bei 'df -hT'
-		Debug:      debug,
+		Debug:      debugFlag,
 		AllowOther: true,
 	}
 
@@ -246,7 +248,7 @@ func MountReverse(dbpath string, keyfile string, rootdir string, mountdir string
 		crypHashIndex: crypHashIndex,
 		rootdir:       rootdir,
 		db:            db,
-		debug:         debug,
+		debug:         debugFlag,
 	}
 
 	// Als Zwischenschicht, (dann ist alles ein wenig einfacher), kommt NewPathNodeFs zum Einsatz

@@ -97,8 +97,11 @@ fi
 /bin/echo "reverse mount ..."
 /bin/mkdir -p $REVERSEMOUNT
 /usr/bin/splitfuse reverse --dbfile $TMPDB --keyfile $SPLITKEYFILE --rootdir \$ROOTDIR --mountdir $REVERSEMOUNT &
-# best race condition fix ever !!
-/bin/sleep 5
+# reverse mode mount very slow (must recalc stuff in db)
+# wait for mount
+while [ ! -d $REVERSEMOUNT/08 ]; do
+   /bin/sleep 2
+done
 # upload with rclone
 /bin/echo "start rclone sync ..."
 HOME=$CONFFOLDER /usr/bin/rclone --config $RCLONECONFFILE copy --transfers 1 --size-only -v $REVERSEMOUNT upload:partstorage
