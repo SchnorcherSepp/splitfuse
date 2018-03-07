@@ -94,7 +94,7 @@ if [ "\$OLDSTATUS" == "\$NEWSTATUS" ]; then
    exit 0
 fi
 # reverse mount
-/bin/echo "reverse mount ..."
+/bin/echo "Recalc db for reverse mount. Takes a few minutes ..."
 /bin/mkdir -p $REVERSEMOUNT
 /usr/bin/splitfuse reverse --dbfile $TMPDB --keyfile $SPLITKEYFILE --rootdir \$ROOTDIR --mountdir $REVERSEMOUNT &
 # reverse mode mount very slow (must recalc stuff in db)
