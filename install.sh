@@ -17,6 +17,11 @@ apt install git -y  &> /dev/null  # install git for go get command
 apt install fuse -y &> /dev/null  # install fuse for FUSE support
 
 ##################################################
+#  fuse.conf                                     #
+##################################################
+sed -i "s/#user_allow_other/user_allow_other/g" /etc/fuse.conf
+
+##################################################
 #  rm and make tempdir                           #
 ##################################################
 TEMPDIR=/tmp/splitfusetmp

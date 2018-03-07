@@ -3,6 +3,7 @@
 #### Installation
  - apt install *git*
  - apt install *fuse*
+ - enable user_allow_other in /etc/fuse.conf
  - get from github.com, build with go-1.10 and install */usr/bin/splitfuse* (main branch)
  - get from github.com, build with go-1.10 and install */usr/bin/rclone* (main branch)
 
