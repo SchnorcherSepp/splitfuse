@@ -50,6 +50,7 @@ func (f *ReverseFile) Read(buf []byte, chunkOffset int64) (fuse.ReadResult, fuse
 		debug(f.debug, "can't open file: "+err.Error())
 		return fuse.ReadResultData([]byte{}), fuse.EIO
 	}
+	defer fh.Close()
 
 	// offset setzen
 	offset := chunkOffset + int64(f.chunkNr)*core.CHUNKSIZE
