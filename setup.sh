@@ -27,11 +27,6 @@ touch $SPLITKEYFILE
 chown $USER:$USER $SPLITKEYFILE
 chmod 600 $SPLITKEYFILE
 
-SPLITDBFILE=$CONFFOLDER/splitfuse.db
-touch $SPLITDBFILE
-chown $USER:$USER $SPLITDBFILE
-chmod 600 $SPLITDBFILE
-
 RCLONECONFFILE=$CONFFOLDER/rclone.conf
 touch $RCLONECONFFILE
 chown $USER:$USER $RCLONECONFFILE
@@ -62,6 +57,6 @@ HOME=$CONFFOLDER /usr/bin/rclone --config $RCLONECONFFILE mount google: $MNTRCLO
 # best race condition fix ever !!
 /bin/sleep 5
 # splitfuse
-/usr/bin/splitfuse normal --dbfile $SPLITDBFILE --keyfile $SPLITKEYFILE --chunkdir $MNTRCLONE/partstorage --mountdir $MNTSPLIT
+/usr/bin/splitfuse normal --dbfile $MNTRCLONE/index.db --keyfile $SPLITKEYFILE --chunkdir $MNTRCLONE/partstorage --mountdir $MNTSPLIT
 EOL
 chmod +x $MOUNTSCRIPT
