@@ -409,6 +409,7 @@ func MountNormal(dbpath string, keyfile string, chunkfolder string, mountpoint s
 	opts := &fuse.MountOptions{
 		FsName:         "SplitFuse", // erste Spalte bei 'df -hT'
 		Name:           "splitfsv2", // zweite Spalte bei 'df -hT'
+		MaxReadAhead:   131072,
 		Debug:          debug,
 		AllowOther:     true,
 		SingleThreaded: true,
