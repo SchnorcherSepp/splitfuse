@@ -28,6 +28,7 @@ type SplitFile struct {
 		chunkNr   int
 		nextChOff int64
 	}
+	nextFhIndex int
 	lastFhMux sync.Mutex
 	nodefs.File
 }
@@ -110,49 +111,43 @@ func (f *SplitFile) Read(buf []byte, offset int64) (fuse.ReadResult, fuse.Status
 	} else {
 		// Plan B: neuer fh
 
-		// alten fh schließen (wenn auf dem letzten Platz einer wäre)
-		if f.lastFh[maxLastFhCache-1].fh != nil {
+		// alten fh schließen (wenn auf dem Platz einer wäre)
+		if f.lastFh[f.nextFhIndex].fh != nil {
 			if f.debug {
-				currentPosition, _ := f.lastFh[maxLastFhCache-1].fh.Seek(0, 1) // 0 offset to current position = current position
-				debug(f.debug, fmt.Sprintf("close fh[%d] for %s at position %d", maxLastFhCache-1, f.lastFh[maxLastFhCache-1].fh.Name(), currentPosition))
+				currentPosition, _ := f.lastFh[f.nextFhIndex].fh.Seek(0, 1) // 0 offset to current position = current position
+				debug(f.debug, fmt.Sprintf("close fh[%d] for %s at position %d", f.nextFhIndex, f.lastFh[f.nextFhIndex].fh.Name(), currentPosition))
 			}
-			f.lastFh[maxLastFhCache-1].fh.Close()
-			f.lastFh[maxLastFhCache-1].fh = nil
-		}
-		// alle fh wandern einen postion nach unten, damit position 0 frei wird
-		for i := maxLastFhCache - 1; i < 1; i-- {
-			f.lastFh[i].fh = f.lastFh[i-1].fh
-			f.lastFh[i].chunkNr = f.lastFh[i-1].chunkNr
-			f.lastFh[i].nextChOff = f.lastFh[i-1].nextChOff
+			f.lastFh[f.nextFhIndex].fh.Close()
+			f.lastFh[f.nextFhIndex].fh = nil
 		}
 
 		// neuen fh öffnen, der auf Pos 0 kommt
 		fh, err := os.Open(chunPath)
-		f.lastFh[0].fh = fh
+		f.lastFh[f.nextFhIndex].fh = fh
 		if err != nil {
 			debug(f.debug, fmt.Sprintf("ERROR: open error: chunkOff=%d, chunkNr=%d, e=%s, p=%s", chunkOffset, chunkNr, err.Error(), chunPath))
 			openErr = err
-			f.lastFh[0].fh = nil
+			f.lastFh[f.nextFhIndex].fh = nil
 
 		} else {
 			// öffnen ok, weiter im Text
-			debug(f.debug, "open fh[0] for "+fh.Name())
+			debug(f.debug, fmt.Sprintf("open fh[%d] for %s", f.nextFhIndex, fh.Name()))
 
 			// chunck offset setzen
 			if _, err := fh.Seek(chunkOffset, 0); err != nil {
 				debug(f.debug, fmt.Sprintf("ERROR: seek error: chunkOff=%d, chunkNr=%d, e=%s, p=%s", chunkOffset, chunkNr, err.Error(), chunPath))
 				openErr = err
-				f.lastFh[0].fh = nil
+				f.lastFh[f.nextFhIndex].fh = nil
 
 			} else {
 				// phu, seek ist ok gegangen
-				debug(f.debug, fmt.Sprintf("set fh[0] offset to %d for %s", chunkOffset, fh.Name()))
+				debug(f.debug, fmt.Sprintf("set fh[%d] offset to %d for %s", f.nextFhIndex, chunkOffset, fh.Name()))
 				// Daten lesen
 				n, err := fh.Read(buf)
 				if err != nil && n > 0 {
 					debug(f.debug, fmt.Sprintf("ERROR: read error with new fh: n=%d, chunkOff=%d, chunkNr=%d, e=%s, p=%s", n, chunkOffset, chunkNr, err.Error(), chunPath))
 					openErr = err
-					f.lastFh[0].fh = nil
+					f.lastFh[f.nextFhIndex].fh = nil
 				}
 				// Buffer auf tatsächliche Länge kürzen
 				buf = buf[:n]
@@ -160,8 +155,14 @@ func (f *SplitFile) Read(buf []byte, offset int64) (fuse.ReadResult, fuse.Status
 		}
 
 		// fh speichern
-		f.lastFh[0].chunkNr = chunkNr
-		f.lastFh[0].nextChOff = chunkOffset + int64(len(buf))
+		f.lastFh[f.nextFhIndex].chunkNr = chunkNr
+		f.lastFh[f.nextFhIndex].nextChOff = chunkOffset + int64(len(buf))
+
+		// f.nextFhIndex weiter setzen
+		f.nextFhIndex++
+		if f.nextFhIndex >= maxLastFhCache {
+			f.nextFhIndex = 0
+		}
 
 	}
 	f.lastFhMux.Unlock() // THREAD SAFE: end
