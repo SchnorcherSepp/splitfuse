@@ -13,7 +13,7 @@ import (
 	"github.com/hanwen/go-fuse/fuse/pathfs"
 )
 
-const maxLastFhCache = 4
+const maxLastFhCache = 12
 
 // SplitFile wird von der Open() Funktion zurück gegeben
 // und stellt die Read() Funktion zur verfügung..
