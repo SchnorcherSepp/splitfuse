@@ -18,6 +18,7 @@ sudo /tmp/install.sh
  - add system user *splitfuse* (no-create-home, disabled-login, disabled-password)
  - create config folder */etc/splitfuse*
  - create mount script */usr/bin/sfmount* (mount rclone and splitfuse)
+ - create upload script */usr/bin/sfupload* (sync local storage (plain) with online storage (encrypt))
 
 ```
 wget -O /tmp/setup.sh https://raw.githubusercontent.com/SchnorcherSepp/splitfuse/master/setup.sh
