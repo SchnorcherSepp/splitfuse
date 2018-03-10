@@ -100,7 +100,7 @@ func (fs *ReverseFs) GetAttr(name string, context *fuse.Context) (*fuse.Attr, fu
 func (fs *ReverseFs) OpenDir(name string, context *fuse.Context) (c []fuse.DirEntry, code fuse.Status) {
 
 	// Ordner
-	if len(name) == 0 || len(name) == 2 {
+	if len(name) == 0 {
 		// eine Liste mit Strings: 00 bis ff  (alles klein)
 		c := make([]fuse.DirEntry, 0, 256)
 		for i := 0; i < 256; i++ {
@@ -111,11 +111,11 @@ func (fs *ReverseFs) OpenDir(name string, context *fuse.Context) (c []fuse.DirEn
 	}
 
 	// Dateien
-	if len(name) == 5 {
+	if len(name) == 2 {
 		for k := range fs.crypHashIndex {
 			s := fmt.Sprintf("%x", k)
 			de := fuse.DirEntry{Name: s, Mode: fuse.S_IFREG}
-			if name[:2] == s[0:2] && name[3:5] == s[2:4] {
+			if name[:2] == s[0:2] {
 				c = append(c, de)
 			}
 		}

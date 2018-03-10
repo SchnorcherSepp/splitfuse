@@ -75,7 +75,7 @@ func (f *SplitFile) Read(buf []byte, offset int64) (fuse.ReadResult, fuse.Status
 	chunkKey := f.chunkKeys[chunkNr]
 	chunkName := f.chunkNames[chunkNr]
 	chunkNameHex := fmt.Sprintf("%x", chunkName)
-	chunPath := filepath.Join(f.chunkFolder, chunkNameHex[:2], chunkNameHex[2:4], chunkNameHex)
+	chunPath := filepath.Join(f.chunkFolder, chunkNameHex[:2], chunkNameHex)
 
 	// Ich muss nun auf den chunk zugreifen und brauche dafür ein file-open
 	// Da diese Operation teuer ist, speichere ich alte filehandler und verwende sie wieder, wenn es geht

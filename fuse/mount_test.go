@@ -226,8 +226,8 @@ func mountReverse(t *testing.T) {
 	folders, files := findAllFiles(mnt1)
 
 	// die zahl der folder muss immer gleich sein:
-	// root (1) + lvl1 00-ff (256) + lvl2 00-ff (256*256)
-	if len(folders) != (1 + 256 + 256*256) {
+	// root (1) + lvl1 00-ff (256)
+	if len(folders) != (1 + 256) {
 		t.Errorf("wrong folder count: %d", len(folders))
 	}
 
