@@ -67,3 +67,17 @@ GOPATH=$GOHOME $GOCMD build -o $INSTALLPATH
 ##################################################
 echo "clean up"
 rm -R $TEMPDIR &> /dev/null
+
+##################################################
+#  tests and exit                                #
+##################################################
+echo "Tests"
+splitfuse --version
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+rclone --version
+if [ $? -ne 0 ]; then
+  exit 2
+fi
+exit 0
