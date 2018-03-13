@@ -1,5 +1,6 @@
 # splitfuse
 
+
 #### Installation
  - apt install *git*
  - apt install *fuse*
@@ -25,3 +26,6 @@ wget -O /tmp/setup.sh https://raw.githubusercontent.com/SchnorcherSepp/splitfuse
 chmod +x /tmp/setup.sh
 sudo /tmp/setup.sh
 ```
+
+#### Docker
+https://hub.docker.com/r/schnorchersepp/splitfuse/
