@@ -1,7 +1,7 @@
 FROM debian:latest
 
-COPY setup.sh /tmp/
 COPY install.sh /tmp/
+COPY setup.sh /tmp/
 
 RUN chmod +x /tmp/install.sh \
  && chmod +x /tmp/setup.sh \
