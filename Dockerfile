@@ -1,7 +1,6 @@
 FROM debian:latest
 
-ADD . /tmp
+COPY setup.sh /tmp/
 
-RUN cd /tmp
-RUN chmod +x ./setup.sh
-RUN ./setup.sh
+RUN chmod +x /tmp/setup.sh
+RUN /tmp/setup.sh
