@@ -13,6 +13,7 @@ fi
 ##################################################
 echo "install dependencies (git and fuse)"
 apt update          &> /dev/null  # update
+apt install wget -y  &> /dev/null # install wget for go download
 apt install git -y  &> /dev/null  # install git for go get command
 apt install fuse -y &> /dev/null  # install fuse for FUSE support
 
