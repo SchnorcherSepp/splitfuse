@@ -1,5 +1,8 @@
 # splitfuse
 
+[![](https://dockerbuildbadges.quelltext.eu/status.svg?organization=schnorchersepp&repository=splitfuse)](https://hub.docker.com/r/schnorchersepp/splitfuse/builds/)  
+
+
 
 #### Installation
  - apt install *git*
@@ -26,6 +29,3 @@ wget -O /tmp/setup.sh https://raw.githubusercontent.com/SchnorcherSepp/splitfuse
 chmod +x /tmp/setup.sh
 sudo /tmp/setup.sh
 ```
-
-#### Docker
-https://hub.docker.com/r/schnorchersepp/splitfuse/
