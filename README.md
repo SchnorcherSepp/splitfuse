@@ -1,7 +1,9 @@
 # splitfuse
+[microbadger]: https://microbadger.com/images/schnorchersepp/splitfuse
+[dockerstore]: https://store.docker.com/community/images/schnorchersepp/splitfuse
 
-[![](https://dockerbuildbadges.quelltext.eu/status.svg?organization=schnorchersepp&repository=splitfuse)](https://hub.docker.com/r/schnorchersepp/splitfuse/builds/)  
-
+[![Docker Layers](https://images.microbadger.com/badges/image/schnorchersepp/splitfuse.svg)][microbadger]
+[![Docker Build Status](https://img.shields.io/docker/build/schnorchersepp/splitfuse.svg)][dockerstore]
 
 
 #### Installation
