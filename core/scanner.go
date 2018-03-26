@@ -53,7 +53,7 @@ func readDirNames(dirname string) ([]FolderContent, error) {
 }
 
 // ScanFolder scant einen ganzen Ordner und erstellt daraus eine db.
-func ScanFolder(rootpath string, db SfDb) (newDB SfDb, changed bool, summary string, retErr error) {
+func ScanFolder(rootpath string, db SfDb, debug bool) (newDB SfDb, changed bool, summary string, retErr error) {
 	// clone oldDB
 	oldDB := make(SfDb, len(db))
 	for k, v := range db {
@@ -100,6 +100,7 @@ func ScanFolder(rootpath string, db SfDb) (newDB SfDb, changed bool, summary str
 		if !ok || e.Size != size || e.IsFile != isFile || e.Mtime != mtime {
 			countNewOrUpdate++
 			changed = true // Änderung festhalten
+			scanDebug(debug, "new or changed: " + relPath)
 
 			if isFile {
 				// Ist es eine Datei: Element scannen
@@ -144,6 +145,12 @@ func ScanFolder(rootpath string, db SfDb) (newDB SfDb, changed bool, summary str
 	// Statistik
 	summary = fmt.Sprintf("SCAN: error=%v, sum=%d, changed=%v, newOrUpdate=%d, removed=%d", retErr, len(newDB), changed, countNewOrUpdate, len(oldDB))
 	return
+}
+
+func scanDebug(debug bool, msg string) {
+	if debug {
+		println("DEBUG: " + msg)
+	}
 }
 
 // scanFile liest eine Klartextdatei und berechnet die hashes der einzelnen Chunks

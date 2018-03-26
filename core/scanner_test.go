@@ -22,12 +22,12 @@ func TestScanFolder(t *testing.T) {
 	db = SfDb{}
 
 	// scan local dir
-	db, changed1, _, err1 := ScanFolder("./", db)
+	db, changed1, _, err1 := ScanFolder("./", db, false)
 	// scan local dir (again)
-	db, changed2, _, err2 := ScanFolder("./", db)
+	db, changed2, _, err2 := ScanFolder("./", db, false)
 	// add a fake file and scan local dir (again)
 	db["iAmAFakeFile.txt"] = SfFile{}
-	db, changed3, _, err3 := ScanFolder("./", db)
+	db, changed3, _, err3 := ScanFolder("./", db, false)
 
 	// check errors
 	if err1 != nil || err2 != nil || err3 != nil {

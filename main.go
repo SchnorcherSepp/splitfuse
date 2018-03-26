@@ -52,7 +52,7 @@ func main() {
 			panic(err)
 		}
 		// ordern scannen
-		newDB, changed, summary, err := core.ScanFolder(*scanRoot, oldDB)
+		newDB, changed, summary, err := core.ScanFolder(*scanRoot, oldDB, *debug)
 		if err != nil {
 			panic(err)
 		}

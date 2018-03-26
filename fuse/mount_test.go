@@ -56,7 +56,7 @@ func init() {
 	if db, err = core.DbFromFile(dbfilepath, key.DbKey()); err != nil {
 		panic(err)
 	}
-	if db, _, _, err = core.ScanFolder(disk, db); err != nil {
+	if db, _, _, err = core.ScanFolder(disk, db, false); err != nil {
 		panic(err)
 	}
 	if err = core.DbToFile(dbfilepath, key.DbKey(), db); err != nil {
