@@ -35,7 +35,7 @@ var (
 )
 
 func main() {
-	app.Version("splitfuse 2.2.0")
+	app.Version("splitfuse 2.2.1")
 	command := kingpin.MustParse(app.Parse(os.Args[1:]))
 
 	switch command {
