@@ -29,7 +29,7 @@ type SplitFile struct {
 		nextChOff int64
 	}
 	nextFhIndex int
-	lastFhMux sync.Mutex
+	lastFhMux   sync.Mutex
 	nodefs.File
 }
 

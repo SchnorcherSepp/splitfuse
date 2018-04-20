@@ -100,7 +100,7 @@ func ScanFolder(rootpath string, db SfDb, debug bool) (newDB SfDb, changed bool,
 		if !ok || e.Size != size || e.IsFile != isFile || e.Mtime != mtime {
 			countNewOrUpdate++
 			changed = true // Änderung festhalten
-			scanDebug(debug, "new or changed: " + relPath)
+			scanDebug(debug, "new or changed: "+relPath)
 
 			if isFile {
 				// Ist es eine Datei: Element scannen

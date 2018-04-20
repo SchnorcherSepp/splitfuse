@@ -3,9 +3,7 @@ package fuse
 import (
 	"os"
 	"fmt"
-	"errors"
 	"path/filepath"
-	"encoding/hex"
 
 	"github.com/SchnorcherSepp/splitfuse/core"
 	"github.com/hanwen/go-fuse/fuse"
@@ -25,19 +23,11 @@ type ReverseFile struct {
 
 // ReverseFs ist ein pathfs und hier sind fast alle eigenen FUSE Funktionen gebunden.
 type ReverseFs struct {
-	crypHashIndex map[core.ChunkHash]pai // um zu einem encChungHash einen Klartextpfad auflösen zu können
-	rootdir       string                 // Pfad zum rootdir
-	db            core.SfDb              // Datenbank
+	crypHashIndex core.ReverseSfDb // um zu einem encChungHash einen Klartextpfad auflösen zu können
+	rootdir       string           // Pfad zum rootdir
+	db            core.SfDb        // Datenbank
 	debug         bool
 	pathfs.FileSystem
-}
-
-// Dieses Struct nimmt Daten für den crypHashIndex auf
-type pai struct {
-	path      string
-	index     int
-	chunkKey  []byte
-	chunkSize uint64
 }
 
 // Read liest bytes und gibt sie fürs FUSE zurück.
@@ -82,10 +72,10 @@ func (fs *ReverseFs) GetAttr(name string, context *fuse.Context) (*fuse.Attr, fu
 	ret.Atime = 1490656554
 
 	// Daten aus dem crypHashIndex holen
-	pai, err := getPAI(fs.crypHashIndex, name)
+	pai, err := fs.crypHashIndex.GetPAI(name)
 	if err == nil {
 		// Datei ist im PAI zu finden, also ist es eine Datei
-		ret.Size = pai.chunkSize
+		ret.Size = pai.ChunkSize
 		ret.Mode = fuse.S_IFREG | 0644
 	} else {
 		// nicht im PAI, also ist es ein Ordner
@@ -130,16 +120,16 @@ func (fs *ReverseFs) OpenDir(name string, context *fuse.Context) (c []fuse.DirEn
 func (fs *ReverseFs) Open(name string, flags uint32, context *fuse.Context) (file nodefs.File, code fuse.Status) {
 
 	// Daten aus dem crypHashIndex holen
-	pai, err := getPAI(fs.crypHashIndex, name)
+	pai, err := fs.crypHashIndex.GetPAI(name)
 	if err != nil {
 		return nil, fuse.ENOENT
 	}
-	relpath := pai.path
-	chunkNr := pai.index
-	chunkKey := pai.chunkKey
+	relpath := pai.Path
+	chunkNr := pai.Index
+	chunkKey := pai.ChunkKey
 
 	// Hier prüfen wir, ob die Klartextdatei auf der Festplatte existiert
-	// Hierzu erweitern wir den relpath zu einem path.
+	// Hierzu erweitern wir den relpath zu einem Path.
 	path := filepath.Join(fs.rootdir, relpath)
 	if _, e := os.Stat(path); e != nil {
 		// klartext Datei nicht auf der Festplatte
@@ -210,29 +200,7 @@ func MountReverse(dbpath string, keyfile string, rootdir string, mountdir string
 	// crypHashIndex: Ich brauche eine Tabelle, in der ich den Chung Name (das ist der verschlüsselte Chunk Hash)
 	// gesucht werden kann. Die DB kann das nicht leisten, also bauen wir uns eine neue Map.
 	debug(debugFlag, "Optimize db for reverse mode. That can take a few minutes.")
-	crypHashIndex := make(map[core.ChunkHash]pai)
-	// gehe alle klartext Dateien aus der DB durch
-	for p, f := range db {
-		// Dateien, die 0 bytes haben, überspringen
-		// auch Ordner überspringen
-		if f.Size < 1 || !f.IsFile {
-			continue
-		}
-		// und behandle von allen klartext Dateien
-		// alle gespeicherten ChunkHashes  (Hash über den Klartext)
-		for i, h := range f.FileChunks {
-			// chunksize (ist er 0 bytes, dann nicht beachten)
-			chunkSize := calcChunkSize(i, f.Size)
-			if chunkSize < 1 {
-				continue
-			}
-			// dieser Hash muss verschlüsselt werden
-			// und in ein core.ChunkHash konvertiert werden
-			ch, _ := core.Sha512ToChunkHash(k.CalcChunkCryptHash(h[:]))
-			// das ergibt dann den crypt Hash, der auch der Dateiname des Chunks ist
-			crypHashIndex[ch] = pai{path: p, index: i, chunkKey: k.CalcChunkKey(h[:]), chunkSize: chunkSize}
-		}
-	}
+	crypHashIndex := db.GetReverseSfDb(k)
 	debug(debugFlag, "start mounting")
 
 	// OPTIONEN
@@ -269,49 +237,6 @@ func MountReverse(dbpath string, keyfile string, rootdir string, mountdir string
 		server.Serve()
 	}
 	return server
-}
-
-// Nimmt einen Pfad entgegen und sucht dann aus dem crypHashIndex das richtige PAI
-func getPAI(crypHashIndex map[core.ChunkHash]pai, name string) (pai, error) {
-
-	// Den ChunkName (entspricht dem verschlüsselten ChunkHash),
-	// der als HEX-String vorliegt, muss in ein [64]byte umgewandelt werden
-	h, err := hex.DecodeString(filepath.Base(name))
-	if err != nil {
-		// Umwandlung des HexString gescheitert
-		return pai{}, err
-	}
-	chunkname, err := core.Sha512ToChunkHash(h)
-	if err != nil {
-		return pai{}, err
-	}
-
-	// Mit dem Chunknamen kann der relative Pfad der klartext Datei ermittelt werden
-	// Die chunkNr beschreibt, welcher Teil der Klartextdatei gelesen werden muss
-	pai, ok := crypHashIndex[chunkname]
-	if !ok {
-		// in der DB nicht gefunden, also kann ich die Datei nicht öffnen
-		return pai, errors.New("chunkname not found")
-	}
-
-	// return
-	return pai, nil
-}
-
-// Berechnet wie groß die einzelnen Chunks sind bei einer bestimmten Klartextdateigröße
-func calcChunkSize(chunkNr int, fileSize uint64) (chunkSize uint64) {
-	test1 := uint64(chunkNr+1) * core.CHUNKSIZE
-	test2 := test1 - fileSize
-
-	if test1 <= fileSize {
-		return core.CHUNKSIZE
-	}
-
-	if test2 > core.CHUNKSIZE {
-		return 0
-	}
-
-	return fileSize % core.CHUNKSIZE
 }
 
 func debug(debug bool, msg string) {

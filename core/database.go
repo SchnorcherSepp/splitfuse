@@ -10,6 +10,8 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"io/ioutil"
+	"encoding/hex"
+	"path/filepath"
 )
 
 // SfDb ist eine Map, dessen Key der Pfad eines Ordners oder einer Datei ist und
@@ -28,6 +30,19 @@ type SfFile struct {
 	IsFile        bool            // true is file, false is folder
 	FileChunks    []ChunkHash     // if file: the full chunk list of this file
 	FolderContent []FolderContent // if folder: a list ob sub elements of this folder
+}
+
+// ReverseSfDb bietet die Möglichkeit, zu einem verschlüsselten ChunkHash (das ist der Dateiname eines Chunks
+// im ChunkStorage), den Pfad zur klartext Datei zu erfragen.
+type ReverseSfDb map[ChunkHash]PathAndIndex
+
+// PathAndIndex wird in der ReverseDB verwendet und speichert den Pfad zu einer Klartext Datei und
+// welcher Chunk (index) davon gelesen werden muss. Dazu noch die Größe (getAttribut) und der ChunkKey.
+type PathAndIndex struct {
+	Path      string
+	Index     int
+	ChunkKey  []byte
+	ChunkSize uint64
 }
 
 // ChunkHash ist ein sha512 Hash (64 bytes) über den Klartext eines Chunks.
@@ -203,4 +218,77 @@ func Sha512ToChunkHash(sha512 []byte) (ChunkHash, error) {
 	var retbytes [64]byte
 	copy(retbytes[:], sha512)
 	return retbytes, nil
+}
+
+// GetPAI erweitert ReverseSfDb und nimmt einen Pfad entgegen und sucht dann das richtige PAI Objekt
+func (rdb *ReverseSfDb) GetPAI(name string) (PathAndIndex, error) {
+
+	// Den ChunkName (entspricht dem verschlüsselten ChunkHash),
+	// der als HEX-String vorliegt, muss in ein [64]byte umgewandelt werden
+	h, err := hex.DecodeString(filepath.Base(name))
+	if err != nil {
+		// Umwandlung des HexString gescheitert
+		return PathAndIndex{}, err
+	}
+	chunkname, err := Sha512ToChunkHash(h)
+	if err != nil {
+		return PathAndIndex{}, err
+	}
+
+	// Mit dem Chunknamen kann der relative Pfad der klartext Datei ermittelt werden
+	// Die chunkNr beschreibt, welcher Teil der Klartextdatei gelesen werden muss
+	pai, ok := (*rdb)[chunkname]
+	if !ok {
+		// in der DB nicht gefunden, also kann ich die Datei nicht öffnen
+		return pai, errors.New("chunkname not found")
+	}
+
+	// return
+	return pai, nil
+}
+
+// CalcChunkSize berechnet wie groß die einzelnen Chunks sind, bei einer bestimmten Klartextdateigröße
+func CalcChunkSize(chunkNr int, fileSize uint64) (chunkSize uint64) {
+	test1 := uint64(chunkNr+1) * CHUNKSIZE
+	test2 := test1 - fileSize
+
+	if test1 <= fileSize {
+		return CHUNKSIZE
+	}
+
+	if test2 > CHUNKSIZE {
+		return 0
+	}
+
+	return fileSize % CHUNKSIZE
+}
+
+// GetReverseSfDb erweitert SfDb und gibt eine ReverseSfDb der SfDb zurück.
+func (db *SfDb) GetReverseSfDb(k KeyFile) ReverseSfDb {
+	crypHashIndex := make(ReverseSfDb)
+
+	// gehe alle klartext Dateien aus der DB durch
+	for p, f := range *db {
+		// Dateien, die 0 bytes haben, überspringen
+		// auch Ordner überspringen
+		if f.Size < 1 || !f.IsFile {
+			continue
+		}
+		// und behandle von allen klartext Dateien
+		// alle gespeicherten ChunkHashes  (Hash über den Klartext)
+		for i, h := range f.FileChunks {
+			// chunksize (ist er 0 bytes, dann nicht beachten)
+			chunkSize := CalcChunkSize(i, f.Size)
+			if chunkSize < 1 {
+				continue
+			}
+			// dieser Hash muss verschlüsselt werden
+			// und in ein core.ChunkHash konvertiert werden
+			ch, _ := Sha512ToChunkHash(k.CalcChunkCryptHash(h[:]))
+			// das ergibt dann den crypt Hash, der auch der Dateiname des Chunks ist
+			crypHashIndex[ch] = PathAndIndex{Path: p, Index: i, ChunkKey: k.CalcChunkKey(h[:]), ChunkSize: chunkSize}
+		}
+	}
+
+	return crypHashIndex
 }
